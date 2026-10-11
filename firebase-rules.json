@@ -1,0 +1,54 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "g": {
+      ".read": "auth!=null",
+      ".write": "auth.token.email==='a3358697@gmail.com'"
+    },
+    "host": {
+      ".read": "auth.token.email==='a3358697@gmail.com'",
+      ".write": "auth.token.email==='a3358697@gmail.com'"
+    },
+    "players": {
+      ".read": "auth!=null",
+      ".write": "auth.token.email==='a3358697@gmail.com'"
+    },
+    "join": {
+      ".read": "auth.token.email==='a3358697@gmail.com'",
+      "$u": {
+        ".write": "auth.uid===$u||auth.token.email==='a3358697@gmail.com'",
+        ".validate": "newData.hasChild('j')&&newData.child('j').val().length<3000"
+      }
+    },
+    "say": {
+      ".read": "auth.token.email==='a3358697@gmail.com'",
+      "$u": {
+        ".write": "auth.uid===$u||auth.token.email==='a3358697@gmail.com'",
+        ".validate": "newData.hasChild('j')&&newData.child('j').val().length<3000"
+      }
+    },
+    "res": {
+      ".read": "auth.token.email==='a3358697@gmail.com'",
+      "$u": {
+        ".read": "auth.uid===$u",
+        ".write": "auth.token.email==='a3358697@gmail.com'"
+      }
+    },
+    "acts": {
+      ".read": "auth.token.email==='a3358697@gmail.com'",
+      "$u": {
+        ".read": "auth.uid===$u",
+        ".write": "auth.uid===$u||auth.token.email==='a3358697@gmail.com'",
+        ".validate": "newData.hasChild('j')&&newData.child('j').val().length<3000"
+      }
+    },
+    "sec": {
+      ".read": "auth.token.email==='a3358697@gmail.com'",
+      "$u": {
+        ".read": "auth.uid===$u",
+        ".write": "auth.token.email==='a3358697@gmail.com'"
+      }
+    }
+  }
+}

@@ -229,7 +229,7 @@ function setCh(i){if(isHost)db.doc('players/'+me).set({...P[me],ch:i});else db.d
 .c{border:22px solid transparent;border-image:var(--fr) 72 fill/22px stretch;padding:0 4px;margin-bottom:6px}
 .b.p{border-style:solid;border-width:0 28px;border-color:transparent;border-image:var(--b1) 0 150 fill/0 28px stretch;background:none;color:#fff;font-weight:700;padding:7px 8px;min-height:36px}
 .b.p:hover:not([disabled]){border-image-source:var(--b2)}.b.p[disabled]{border-image-source:var(--b3);opacity:1;color:#9aa}
-.cg{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}.th{height:72px;border:2px solid transparent;border-radius:8px;background:rgba(255,255,255,.08);cursor:pointer}.th.sel{border-color:#ffd54a}.th.tk{opacity:.25;filter:grayscale(1);pointer-events:none}
+.cg{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}.th{height:72px;border:2px solid transparent;border-radius:8px;background-color:rgba(255,255,255,.08);cursor:pointer}.th.sel{border-color:#ffd54a}.th.tk{opacity:.25;filter:grayscale(1);pointer-events:none}
 `;document.head.appendChild(st)})();
 const ri=k=>WPD[k]?`<i class="ri k w_${WPD[k].w}" style="aspect-ratio:${IMD.wp[WPD[k].w].join('/')}"></i>`:'';
 const HX={dk:'夜晚可與同夥在「同隊頻道」討論；白天要想辦法隱藏身分。',as:'查驗結果只有你看得到，要不要公開、怎麼說服大家，由你決定。',wm:'解藥只能救當晚被襲擊的人（同時被騎士守護則救不回）；毒藥可讓任何人退場。兩種都只能用一次。',gn:'只有在「夜晚」退場（被襲擊或被毒）時，才能在夜裡開槍帶走一人；白天被放逐不能開槍。',kn:'不能連續兩晚守同一人；守護和解藥同時作用在同一人身上，該人仍會死亡。',bm:'你的目標是被放逐，不是存活，行為要「剛好」讓大家想票你。',mg:'遊戲結束時如果還活著，可為一位亡者舉辦歡樂殯葬，純趣味，不影響勝負。',fi:'遊戲結束時如果你還活著，不論哪邊贏，都是你獨自獲勝。',ad:'沒有技能，靠發言、推理與投票找出暗黑騎士。'};
@@ -388,6 +388,7 @@ function renderHost(){if(!isHost)return;const h=$('#hc');
  try{if(String(FIREBASE_CONFIG.apiKey).startsWith('填')){$('#j').innerHTML='<div class="c">尚未填寫 Firebase 設定，請編輯 index.html 最上方的設定區。</div>';return}
    firebase.initializeApp(FIREBASE_CONFIG);const auth=firebase.auth();db=mkdb(firebase.database());
    let user=await new Promise(r=>{const u=auth.onAuthStateChanged(x=>{u();r(x)})});
+   if(location.hash=='#guest'&&user&&user.email){await auth.signOut();user=null}
    if(location.hash=='#host'&&!(user&&user.email))user=await hostLogin(auth);
    else if(!user)user=(await auth.signInAnonymously()).user;
    me=user.uid;isHost=!!user.email&&user.email===HOST_EMAIL;canW=true;

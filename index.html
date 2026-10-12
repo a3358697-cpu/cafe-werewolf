@@ -125,11 +125,12 @@ function pump(){const it=(S.queue||[]).shift();
  if(it){S.phase=it.k;S.speaker=it.u;S.deadline=it.k=='last'?Math.max(Date.now(),S.hold||0)+60000:null;S.log.push(it.k=='last'?`🕯️ ${nm(it.u)} 發表遺言`:`🔫 機工士 ${nm(it.u)} 開槍`)}
  else fin(S.after);S.r++;put()}
 function go(dead,to,lw){S.queue=lw.map(u=>({k:'last',u}));S.after=to;pump()}
-function winLog(o){[...NL[o.k](o),...(o.mg?MGL:[])].reverse().forEach(l=>S.log.push('📖 '+l))}
+function winLog(o){S.pendLog=[...NL[o.k](o),...(o.mg?MGL:[])].reverse().map(l=>'📖 '+l)}
 const narObj=(k,u)=>{const o={id:String(Date.now())+Math.random(),k,u:u||[],mg:ids().some(x=>H.roles[x]=='mg'&&al(x))};try{const L=[...NL[k](o),...(o.mg&&k.startsWith('win_')?MGL:[])];S.hold=Math.max(S.hold||0,Date.now())+dur(L)}catch(e){}return o};
 function kill(u,why){S.alive[u]=false;S.fac=S.fac||{};S.fac[u]=F(H.roles[u]);S.log.push(`💀 ${nm(u)}${why}`)}
 
 function tick(F){if(!isHost||!S||!H.roles)return;if(!F&&S.hold&&Date.now()<S.hold)return;
+ if(S.pendLog){S.pendLog.forEach(l=>S.log.push(l));delete S.pendLog;put()}
  if(!F&&(S.phase=='night'||S.phase=='vote'||S.phase=='shoot')){if(S.tdlR!==S.r){S.tdlR=S.r;S.tdl=Date.now()+(S.phase=='night'?90000:S.phase=='vote'?300000:40000);db.doc('g/state').set(S)}else if(Date.now()>S.tdl)F=true}const I=ids(),av=I.filter(al),g=r=>av.filter(u=>H.roles[u]==r);
  if(S.phase=='night'){const wv=g('dk'),as=g('as')[0],kn=g('kn')[0],wm=g('wm')[0];
   if(H.wt===undefined&&(F||wv.every(A))){const p=wv.map(u=>A(u)&&A(u).t).filter(Boolean);H.wt=rnd(p);put()}
@@ -274,11 +275,11 @@ function dayStart(dead,shot){dead.forEach(u=>kill(u,u===shot?'被機工士帶走
 `;document.head.appendChild(st)})();
 function tl(){if(!S||S.tdlR!==S.r||!['night','vote','shoot'].includes(S.phase))return '';const l=Math.max(0,Math.ceil((S.tdl-Date.now())/1000));return ' ・ 剩餘 '+Math.floor(l/60)+':'+String(l%60).padStart(2,'0')}
 function stage(sp){const lobby=!S||S.phase=='lobby',L=lobby?Object.keys(P).sort((a,b)=>P[a].t-P[b].t).filter(u=>P[u].mode!='watch'):ids(),n=L.length||1,night=!lobby&&(S.phase=='night'||S.phase=='shoot'),sc=mySec(),U=ME();
- const lw={},now=Date.now(),pb={},tmb={},idx={};L.forEach((x,i)=>idx[x]=i+1);CH.msgs.forEach(m=>{if(!m.t||now-m.t>=8000)return;if(m.lw)lw[m.u]=((lw[m.u]||'')+' '+m.text).trim();else pb[m.u]=m.text});if(sc&&sc.tc)sc.tc.forEach(m=>{if(m.t&&now-m.t<8000)tmb[m.u]=m.text});const VT=!lobby&&S.phase=='vote'?(S.votes||{}):(!lobby&&LVK&&LVK===S.lvT&&NPL&&S.lastVotes?Object.fromEntries(S.lastVotes):null);
- const known=u=>{if(lobby)return null;if(S.phase=='end'&&S.reveal)return S.reveal[u];if(GOD&&H.roles)return H.roles[u];if(!sc||!ids().includes(U))return null;if(u==U)return sc.role;return sc.mates&&sc.mates.includes(u)?'dk':null};
+ const lw={},now=Date.now(),pb={},tmb={},idx={};L.forEach((x,i)=>idx[x]=i+1);CH.msgs.forEach(m=>{if(m.lw){lw[m.u]=((lw[m.u]||'')+' '+m.text).trim();return}if(!m.t||now-m.t>=8000)return;pb[m.u]=m.text});if(sc&&sc.tc)sc.tc.forEach(m=>{if(m.t&&now-m.t<8000)tmb[m.u]=m.text});const VT=!lobby&&S.phase=='vote'?(S.votes||{}):(!lobby&&LVK&&LVK===S.lvT&&NPL&&S.lastVotes?Object.fromEntries(S.lastVotes):null);
+ const known=u=>{if(lobby)return null;if(S.phase=='end'&&RVL&&S.reveal)return S.reveal[u];if(GOD&&H.roles)return H.roles[u];if(!sc||!ids().includes(U))return null;if(u==U)return sc.role;return sc.mates&&sc.mates.includes(u)?'dk':null};
  const seats=L.map((u,i)=>{const a=-Math.PI/2+i*2*Math.PI/n,x=50+42*Math.cos(a),y=53+31*Math.sin(a),dead=!lobby&&!al(u),k=known(u);
   const bt=lw[u]?['lwb',lw[u]]:tmb[u]?['tm',tmb[u]]:pb[u]?['',pb[u]]:null,pick=TGT&&TGT.list.includes(u),fc=dead?((S.fac&&S.fac[u])||'n'):(k?F(k):'n');
-  return `<div class="seat ${dead?'dead':''} ${pick?'pick':''} ${TGT&&TGT.sel===u?'sel':''} ${!lobby&&S.phase=='last'&&S.speaker==u?'spk':''} ${u==U?'me':''} ${bt||(VT&&VT[u]!==undefined)?'hb':''}" style="left:${x}%;top:${y}%" data-a="seat" data-u="${u}">${bt?`<div class="bub ${bt[0]}">${esc(bt[1].slice(0,100))}</div>`:''}${VT&&VT[u]!==undefined?`<div class="vbub">${VT[u]?idx[VT[u]]:'棄'}</div>`:''}<div class="nm">${nm(u)}</div><div class="av">${avatar(u,dead,!lobby&&S.phase=='end'&&S.reveal?S.reveal[u]:null)}</div><div><span class="no ${fc}">${i+1}</span></div>${k?`<div class="rl ${F(k)}">${ri(k)}${R[k][0]}</div>`:''}</div>`}).join('');
+  return `<div class="seat ${dead?'dead':''} ${pick?'pick':''} ${TGT&&TGT.sel===u?'sel':''} ${!lobby&&S.phase=='last'&&S.speaker==u?'spk':''} ${u==U?'me':''} ${bt||(VT&&VT[u]!==undefined)?'hb':''}" style="left:${x}%;top:${y}%" data-a="seat" data-u="${u}">${bt?`<div class="bub ${bt[0]}">${esc(bt[1].slice(0,100))}</div>`:''}${VT&&VT[u]!==undefined?`<div class="vbub">${VT[u]?idx[VT[u]]:'棄'}</div>`:''}<div class="nm">${nm(u)}</div><div class="av">${avatar(u,dead,!lobby&&S.phase=='end'&&RVL&&S.reveal?S.reveal[u]:null)}</div><div><span class="no ${fc}">${i+1}</span></div>${k?`<div class="rl ${F(k)}">${ri(k)}${R[k][0]}</div>`:''}</div>`}).join('');
  const al2=lobby?n:ids().filter(al).length,lab=lobby?'等待開始':{night:'夜晚',vote:'白天・投票',last:'遺言',shoot:'開槍',end:'結束'}[S.phase];
  return `<div class="stage ${night?'night':''} ${n>12?'sm':''}"><div class="tb">${lobby?'':'存活 '+al2+' / '+n+tl()}${lobby?n+' 人入座':''}</div>${lobby?'':trh()}<div class="cen">${ctr(sp)}${lastInfo()}</div>${seats}</div>`}
 const F=r=>r=='dk'?'b':['as','wm','gn','kn'].includes(r)?'g':'n';
@@ -319,10 +320,10 @@ const NL={
  win_bm:()=>['遊戲結束。','青魔導士獲勝！','他不是暗黑騎士，也不是冒險者。','他只是成功讓大家受不了，然後把他票了出去。','恭喜各位，你們親手把真正的贏家送上了王座。','「我就說我不是暗黑騎士吧，庫啵？」'],
  win_fi:()=>['翻了翻結算紀錄。','暗黑騎士輸了。','冒險者也輸了。','真正的贏家是…… 漁夫！','當大家還在激烈爭論誰才是暗黑騎士時，他早已拋下魚竿，靜靜等待下一條傳說魚上鉤。','感謝各位的努力。','讓一個從頭到尾都在釣魚的人獲得了勝利。','恭喜獲得「年度最佳漁夫」稱號！'],
  funeral:n=>[`${nn(n)}被送上了最歡樂的告別式。`,'庫啵～乾杯！']};
-const NSP=140,NHD=2800;
+const NSP=120,NHD=2400;
 const dur=L=>L.reduce((a,l)=>a+String(l).replace(/<wait\.\d+>/,'').length*NSP+NHD,0)+800;
 const NIGHTL=['夜幕降臨，請各位閉上雙眼。','白魔法師請睜眼，請決定是否使用復活或神聖制裁。'];
-let NQ=[],NPL=false,LVK=0,NK2=null;
+let NQ=[],NPL=false,LVK=0,NK2=null,RVL=false;
 async function playNar(lines){const t=++NT,el=$('#nar');el.style.display='block';el.onclick=()=>{NT++;NQ=[];el.style.display='none'};
  for(let line of lines){if(t!=NT)return;if(typeof line=='function')line=line();if(!line)continue;let w=0;line=line.replace(/<wait\.(\d+)>/,(_,n)=>{w=+n;return ''}).trim();el.textContent='';
   for(let i=1;i<=line.length;i++){if(t!=NT)return;el.textContent=line.slice(0,i);await sleep(NSP)}
@@ -332,14 +333,14 @@ async function runQ(){NPL=true;render();while(NQ.length){await playNar(NQ.shift(
 function enq(lines){NQ.push(lines);if(!NPL)runQ()}
 function nightLines(){return[NIGHTL[0],()=>{const sc=mySec(),U=ME();if(!sc||!ids().includes(U)||!al(U))return null;return {dk:'暗黑騎士請睜眼，請選擇今晚的目標。',as:'占星術士請睜眼，請選擇今晚查驗對象。',kn:'騎士請睜眼，請選擇今晚守護對象。',wm:NIGHTL[1]}[sc.role]||null}]}
 function narCheck(){if(!SL)return;const k1=S&&S.nar&&NL[S.nar.k]?'x'+S.nar.id:null,k2=S&&S.phase=='night'?'n'+S.r:null;
- if(NK===null){NK=k1||'-';NK2=k2||'-';return}
- if(k1&&k1!==NK){NK=k1;let L=NL[S.nar.k](S.nar);if(S.nar.mg&&S.nar.k.startsWith('win_'))L=[...L,...MGL];if(S.nar.k=='exile'||S.nar.k=='noexile')LVK=S.lvT||0;enq(L)}
+ if(NK===null){NK=k1||'-';NK2=k2||'-';if(S&&S.phase=='end')RVL=true;return}
+ if(k1&&k1!==NK){NK=k1;let L=NL[S.nar.k](S.nar);if(S.nar.mg&&S.nar.k.startsWith('win_'))L=[...L,...MGL];if(S.nar.k=='exile'||S.nar.k=='noexile')LVK=S.lvT||0;if(S.nar.k.startsWith('win_'))L=[()=>{RVL=true;render();return null},...L];enq(L)}
  if(k2&&k2!==NK2){NK2=k2;enq(nightLines())}}
 function trh(){const d={b:0,g:0,n:0};Object.values(S.fac||{}).forEach(f=>d[f]++);const t=S.tot||{b:0,g:0,n:0};
  return `<div class="tr"><span class="fb">${t.b-d.b}</span><span class="fb fg">${t.g-d.g}</span><span class="fb fn">${t.n-d.n}</span></div>`}
 let RQ=0;function render(){if(RQ)return;RQ=requestAnimationFrame(()=>{RQ=0;renderNow()})}
 function renderNow(){const U=ME(),sc=mySec(),lobby=!S||S.phase=='lobby',inG=!lobby&&ids().includes(U),mine=inG&&sc&&sc.role,meAl=inG&&al(U);
- narCheck();lwShow();TGT=null;const sp=NPL?null:spec();if(sp&&sp.a){const c=cur();TGT={a:sp.a,list:sp.list,sel:sp.a=='poi'?c.p:c.t}}
+ narCheck();if(!S||S.phase!='end')RVL=false;else if(!NPL&&!NQ.length)RVL=true;lwShow();TGT=null;const sp=NPL?null:spec();if(sp&&sp.a){const c=cur();TGT={a:sp.a,list:sp.list,sel:sp.a=='poi'?c.p:c.t}}
  $('#stagebox').innerHTML=stage(sp);
  $('#logb').innerHTML=lobby?'<span class="m">遊戲尚未開始</span>':[...S.log].reverse().map(l=>`<div>${l}</div>`).join('');
  let t='<h2>我的身分</h2>';
@@ -353,7 +354,7 @@ function renderNow(){const U=ME(),sc=mySec(),lobby=!S||S.phase=='lobby',inG=!lob
   ${[['bm','青魔導士'],['mg','莫古禮儀師'],['fi','漁夫']].map(([k,t])=>`<button class="b ${OPT[k]&&ok(k,n)?'on':''}" data-a="opt" data-u="${k}" ${ok(k,n)?'':'disabled'}>${t}${ok(k,n)?'':'（'+(k=='bm'?8:10)+'人以上）'}</button>`).join('')}
   <p class="m">本局配置：${n>=6?board(n,OPT).map(k=>R[k][0]).join('、'):'人數不足（至少 6 人）'}</p><button class="b p" data-a="go">開始遊戲</button></div>`:'<p class="m">等待主持人開始遊戲…</p>')}
  else{
-  if(S.phase=='end')h+=`<div class="c"><div class="big">${{good:'🌟 冒險者陣營獲勝',dk:'🌑 暗黑騎士獲勝',fi:'🎣 漁夫獨自獲勝',bm:'🎭 青魔導士獨自獲勝'}[S.win]}</div>${ids().map(u=>`<div class="${al(u)?'':'dead'}">${nm(u)}：${ri(S.reveal[u])}${R[S.reveal[u]][0]}</div>`).join('')}</div>`;
+  if(S.phase=='end'&&RVL)h+=`<div class="c"><div class="big">${{good:'🌟 冒險者陣營獲勝',dk:'🌑 暗黑騎士獲勝',fi:'🎣 漁夫獨自獲勝',bm:'🎭 青魔導士獨自獲勝'}[S.win]}</div>${ids().map(u=>`<div class="${al(u)?'':'dead'}">${nm(u)}：${ri(S.reveal[u])}${R[S.reveal[u]][0]}</div>`).join('')}</div>`;
   if(isHost)h+=`<div class="c"><h2>主持人</h2><button class="b" data-a="force">強制結算此階段</button><button class="b" data-a="god">${GOD?'隱藏':'顯示'}全部身分</button><button class="b x" data-a="reset">重開一局</button>${GOD&&H.roles?ids().map(u=>`<div class="${al(u)?'':'dead'}">${nm(u)}：${R[H.roles[u]][0]}</div>`).join(''):''}</div>`}
  $('#main').innerHTML=h;renderChat()}
 

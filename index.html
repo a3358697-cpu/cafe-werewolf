@@ -54,7 +54,7 @@ input,select{font:inherit;padding:7px;border:1px solid var(--bd);border-radius:8
 @media(max-width:1280px){#gm{grid-template-columns:1fr}#bt{position:static}}
 </style></head><body><div id="w">
 <div id="w">
-<h1>🌙 艾歐澤亞的夜晚</h1><div id="hb"><button class="b" data-a="help" data-u="rules">📖 遊戲玩法</button><button class="b" data-a="help" data-u="roles">🎭 職業介紹</button></div>
+<h1>🌙 艾歐澤亞的夜晚</h1><div id="hb"><button class="b" data-a="help" data-u="rules">📖 遊戲玩法</button><button class="b" data-a="help" data-u="roles">🎭 職業介紹</button><button class="b x" data-a="leave">🚪 退出遊戲</button></div>
 <div id="j"></div><div id="gm"><div id="lc"><div style="position:relative"><div id="stagebox"></div><div id="nar" class="nar"></div><div id="lwbox" class="lwbox" style="display:none"><div>🕯️ 留下你的遺言（送出後立即結束）</div><input id="lwi" maxlength="100" placeholder="想說的話…"><div><button class="b p" id="lws">送出遺言</button><button class="b" id="lwn">沒有遺言</button></div></div></div>
 <div id="main"></div><div id="hc"></div></div><div id="bt">
 <div class="c pn"><h2>📜 紀錄</h2><div id="logb" class="log"></div></div>
@@ -185,10 +185,10 @@ function start(){const I=playersIn().sort((a,b)=>P[a].t-P[b].t),n=I.length;
  S={phase:'night',r:(S?S.r:0)+1,n:1,order:I,alive:alv,fac:{},tot:(()=>{const t={b:0,g:0,n:0};I.forEach(u=>t[F(roles[u])]++);return t})(),log:['🌙 第1夜降臨，請閉上眼睛']};S.hold=Date.now()+dur(NIGHTL);put()}
 function reset(){if(!RC){RC=1;toast('再按一次「重開一局」確認');setTimeout(()=>{RC=0},4000);return}RC=0;H={};CS={};
  Object.keys(P).forEach(u=>{if(P[u].mode=='next')db.doc('players/'+u).set({...P[u],mode:'play'})});
- S={phase:'lobby',r:(S?S.r:0)+1,log:[]};db.doc('g/state').set(S)}
+ Object.keys(P).forEach(u=>{if(P[u].left)db.doc('players/'+u).delete()});S={phase:'lobby',r:(S?S.r:0)+1,log:[]};db.doc('g/state').set(S)}
 function send(o){const u=ME(),x={...o,r:S.r};ACTS[u]=x;PEND={};db.doc('acts/'+u).set(x);render()}
 function setMode(m){if(isHost)db.doc('players/'+me).set({...P[me],mode:m});else db.doc('join/'+me).set({mode:m,n:Date.now()})}
-function procJoin(){if(!isHost||!CFG)return;Object.entries(JOINS).forEach(([u,j])=>{delete JOINS[u];db.doc('join/'+u).delete();
+function procJoin(){if(!isHost||!CFG)return;Object.entries(JOINS).forEach(([u,j])=>{delete JOINS[u];db.doc('join/'+u).delete();if(j.leave){leavePlayer(u,'離開了遊戲');return}
  let m=['play','watch','next'].includes(j.mode)?j.mode:'watch';const lobby=!S||S.phase=='lobby';if(m=='play'&&!lobby)m='next';if(m=='next'&&lobby)m='play';
  if(P[u]){let ch=P[u].ch;if(j.ch!=null){if(taken(j.ch,u)){db.doc('res/'+u).set({ok:false,n:Date.now(),msg:'這個角色已被選走'});return}ch=j.ch}const np={...P[u],mode:m};if(ch!=null)np.ch=ch;P[u]=np;db.doc('players/'+u).set(np);return}
  if(!CFG.open||(CFG.pw&&j.pw!==CFG.pw)){db.doc('res/'+u).set({ok:false,n:Date.now(),msg:CFG.open?'密碼錯誤':'主持人尚未開放'});return}
@@ -198,9 +198,17 @@ function procSay(){if(!isHost)return;Object.entries(SAYS).forEach(([u,m])=>{dele
  const text=String(m.text||'').trim().slice(0,120);if(!text||cannot(u,m.ch,H.roles&&H.roles[u]))return;
  if(m.ch=='ghost'){GH.msgs=[...GH.msgs,{u,text,t:Date.now()}].slice(-100);db.doc('g/ghost').set(GH)}else if(m.ch=='team'){H.tc=[...(H.tc||[]),{u,text,t:Date.now()}].slice(-60);put()}else post(u,text,S&&S.phase=='last')})}
 
-const ACT={chg:()=>openPick('pc2'),chg0:()=>openPick('pc'),close:()=>closeOv(),help:t=>openHelp(t),pc:i=>{SELCH=+i;closeOv();updPcb()},pc2:i=>{if(!taken(+i,me)){setCh(+i);closeOv()}},seat:u=>{if(TGT&&TGT.list.includes(u)){if(TGT.a=='poi')setP({p:cur().p===u?null:u});else setP({t:u})}},t:u=>send({t:u}),n:()=>send({t:null}),
+let RLV=0,RM2=null,LEFT=false;
+function leavePlayer(u,why){if(!P[u])return;const lobby=!S||S.phase=='lobby';
+ if(lobby||!ids().includes(u)){db.doc('players/'+u).delete();delete P[u];return}
+ if(S.alive[u]){kill(u,why||'離開了遊戲');put()}
+ const np={...P[u],mode:'watch',left:true};P[u]=np;db.doc('players/'+u).set(np)}
+function fillPm(){const el=$('#pm');if(!el)return;el.innerHTML=Object.keys(P).filter(u=>u!=me).sort((a,b)=>(P[a].t||0)-(P[b].t||0)).map(u=>`<div>${nm(u)} <span class="m">${P[u].bot?'🤖 機器人 ':''}${P[u].left?'（已離開）':''}</span> <button class="b x" data-a="rm" data-u="${u}">移出</button></div>`).join('')||'<span class="m">（沒有其他玩家）</span>'}
+const ACT={leave:()=>{if(!P[me])return toast('你還沒加入遊戲');if(!RLV){RLV=1;toast('再按一次「退出遊戲」確認');setTimeout(()=>{RLV=0},4000);return}RLV=0;if(isHost){if(!S||S.phase=='lobby'){db.doc('players/'+me).delete();toast('已退出座位')}else toast('遊戲進行中，主持人無法退出');return}LEFT=true;db.doc('join/'+me).set({leave:true,n:Date.now()});renderJoin()},
+ rejoin:()=>{LEFT=false;renderJoin()},
+ rm:u=>{if(RM2!==u){RM2=u;toast('再按一次移出：'+((P[u]&&P[u].name)||'玩家'));setTimeout(()=>{if(RM2===u)RM2=null},4000);return}RM2=null;leavePlayer(u,'被主持人移出遊戲')},chg:()=>openPick('pc2'),chg0:()=>openPick('pc'),close:()=>closeOv(),help:t=>openHelp(t),pc:i=>{SELCH=+i;closeOv();updPcb()},pc2:i=>{if(!taken(+i,me)){setCh(+i);closeOv()}},seat:u=>{if(TGT&&TGT.list.includes(u)){if(TGT.a=='poi')setP({p:cur().p===u?null:u});else setP({t:u})}},t:u=>send({t:u}),n:()=>send({t:null}),
  heal:()=>setP({heal:!cur().heal}),cf:()=>{const sp=spec();if(!sp)return;const c=cur();if(sp.okA=='fin')send({...my(),done:true});else if(sp.okA=='wit')send({done:true,heal:!!c.heal,p:c.p||null});else send({t:c.t===undefined?null:c.t})},
- kick:u=>db.doc('players/'+u).delete(),opt:k=>{OPT[k]=!OPT[k];render()},go:()=>start(),reset:()=>reset(),force:()=>tick(true),
+ kick:u=>ACT.rm(u),opt:k=>{OPT[k]=!OPT[k];render()},go:()=>start(),reset:()=>reset(),force:()=>tick(true),
  mode:m=>setMode(m),tab:t=>{CHT=t;renderChat()},god:()=>{GOD=!GOD;render()},
  open:()=>{CFG.open=!CFG.open;saveCfg()},
  addbot:()=>{if(S&&S.phase!='lobby')return toast('遊戲進行中無法新增');const k=Object.keys(P).filter(u=>P[u].bot).length+1;
@@ -390,6 +398,7 @@ $('#gs').onclick=()=>sendChat('ghost');$('#gi').addEventListener('keydown',e=>{i
 $('#ts').onclick=()=>sendChat('team');$('#ti').addEventListener('keydown',e=>{if(e.key=='Enter')sendChat('team')});
 
 function renderJoin(){const j=$('#j');
+ if(LEFT&&!isHost){if(!P[me]||P[me].left){j.innerHTML='<div class="c">你已退出遊戲。 <button class="b p" data-a="rejoin">重新加入</button></div>';return}LEFT=false}
  if(isHost||P[me]){const p=P[me];if(!p){j.innerHTML='';return}
   j.innerHTML=`<div class="c">你是：<b>${nm(me)}</b>${isHost&&(P[me].name||'')!='主持人'?'（主持人）':''}　${['play','watch','next'].map(k=>{const lobby=!S||S.phase=='lobby',dis=k=='play'?!lobby:k=='next'?lobby:false;return `<button class="b ${(p.mode==k||(lobby&&p.mode=='next'&&k=='play'))?'on':''}" data-a="mode" data-u="${k}" ${dis?'disabled':''}>${MT[k]}</button>`}).join('')}${(!S||S.phase=='lobby')?` <button class="b" data-a="chg">更換角色</button>`:''}</div>`;markCg();return}
  if(!canW){j.innerHTML='<div class="c m">你目前是唯讀身分，無法加入遊戲。需要主持人給你「協作者（Contributor）」權限。</div>';return}
@@ -399,9 +408,10 @@ function renderJoin(){const j=$('#j');
  $('#jm').textContent=RES&&!RES.ok?RES.msg:'';updPcb()}
 function renderHost(){if(!isHost)return;const h=$('#hc');
  if(!h.firstChild)h.innerHTML=`<div class="c"><h2>主持人控制台</h2><div class="m">⚠️ 請讓這個頁面保持在前景（不要最小化或切到其他分頁太久），遊戲的結算都在你的頁面上執行。</div><div>入場密碼 <input id="hp" placeholder="留空＝不需密碼"></div><div><button class="b" id="ho" data-a="open"></button></div>
+ <div class="m">玩家管理（關掉網頁的人請在這裡按「移出」）</div><div id="pm"></div>
  <div class="m">測試（人數不足時）</div><button class="b" data-a="addbot">＋機器人</button><button class="b" data-a="rmbot">清除機器人</button>
  <div>操控視角 <select id="va"></select></div></div>`;
- $('#hp').onchange=e=>{CFG.pw=e.target.value;saveCfg()};if(document.activeElement!=$('#hp'))$('#hp').value=CFG.pw||'';
+ fillPm();$('#hp').onchange=e=>{CFG.pw=e.target.value;saveCfg()};if(document.activeElement!=$('#hp'))$('#hp').value=CFG.pw||'';
  $('#ho').textContent=CFG.open?'🟢 入場已開放（點此關閉）':'🔴 入場未開放（點此開放）';
  const bs=Object.keys(P).filter(u=>P[u].bot),sig=bs.join();if(sig!=vaSig){vaSig=sig;$('#va').innerHTML='<option value="">我自己</option>'+bs.map(u=>`<option value="${u}">${nm(u)}</option>`).join('');$('#va').value=VA&&bs.includes(VA)?VA:''}
  $('#va').onchange=e=>{VA=e.target.value||null;PEND={};render()}}

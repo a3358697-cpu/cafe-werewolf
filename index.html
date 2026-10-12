@@ -78,7 +78,7 @@ function mkdb(fdb){const ref=p=>fdb.ref(p),err=p=>e=>console.warn('讀取失敗'
  return{doc:p=>({set:o=>ref(p).set({j:JSON.stringify(o)}),delete:()=>ref(p).remove(),
    onSnapshot:cb=>ref(p).on('value',s=>{const v=s.val();cb({exists:!!(v&&v.j),data:()=>JSON.parse(v.j)})},err(p))}),
   collection:p=>({onSnapshot:cb=>ref(p).on('value',s=>{const docs=[];s.forEach(c=>{const v=c.val();if(v&&v.j)docs.push({id:c.key,data:()=>JSON.parse(v.j)})});cb({docs})},err(p))})}}
-function hostLogin(auth){return new Promise(res=>{$('#main').innerHTML='<div class="c"><h2>主持人登入</h2><input id="he" placeholder="Email"> <input id="hpw" type="password" placeholder="密碼"> <button class="b p" id="hl">登入</button><div class="x" id="hm"></div></div>';
+function hostLogin(auth){return new Promise(res=>{$('#j').innerHTML='<div class="c"><h2>主持人登入</h2><input id="he" placeholder="Email"> <input id="hpw" type="password" placeholder="密碼"> <button class="b p" id="hl">登入</button><div class="x" id="hm"></div></div>';
  $('#hl').onclick=async()=>{try{const c=await auth.signInWithEmailAndPassword($('#he').value.trim(),$('#hpw').value);res(c.user)}catch(e){$('#hm').textContent='登入失敗：'+e.message}}})}
 </script>
 <script>
@@ -385,7 +385,7 @@ function renderHost(){if(!isHost)return;const h=$('#hc');
  $('#va').onchange=e=>{VA=e.target.value||null;PEND={};render()}}
 
 (async()=>{
- try{if(String(FIREBASE_CONFIG.apiKey).startsWith('填')){$('#main').innerHTML='<div class="c">尚未填寫 Firebase 設定，請編輯 index.html 最上方的設定區。</div>';return}
+ try{if(String(FIREBASE_CONFIG.apiKey).startsWith('填')){$('#j').innerHTML='<div class="c">尚未填寫 Firebase 設定，請編輯 index.html 最上方的設定區。</div>';return}
    firebase.initializeApp(FIREBASE_CONFIG);const auth=firebase.auth();db=mkdb(firebase.database());
    let user=await new Promise(r=>{const u=auth.onAuthStateChanged(x=>{u();r(x)})});
    if(location.hash=='#host'&&!(user&&user.email))user=await hostLogin(auth);
@@ -411,6 +411,6 @@ function renderHost(){if(!isHost)return;const h=$('#hc');
    db.doc('acts/'+me).onSnapshot(s=>{if(s.exists)ACTS[me]=s.data();render()});
   }
   setInterval(()=>{if(!S)return;const sc=mySec(),n=Date.now();if(S.phase=='last'||[...CH.msgs.slice(-6),...((sc&&sc.tc)||[]).slice(-6)].some(m=>m.t&&n-m.t<9000)||(S.lvT&&n-S.lvT<9000)||(S.tdl&&S.tdlR===S.r&&['night','vote','shoot'].includes(S.phase)))render()},1000);
- }catch(e){$('#main').innerHTML='<div class="c">載入失敗：'+esc(e.message||e.code)+'</div>'}
+ }catch(e){$('#j').innerHTML='<div class="c">載入失敗：'+esc(e.message||e.code)+'</div>'}
 })();
 </script></body></html>

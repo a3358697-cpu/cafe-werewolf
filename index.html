@@ -210,7 +210,10 @@ function leavePlayer(u,why){if(!P[u])return;const lobby=!S||S.phase=='lobby';
  if(S.alive[u]){kill(u,why||'離開了遊戲');put()}
  const np={...P[u],mode:'watch',left:true};P[u]=np;db.doc('players/'+u).set(np)}
 function fillPm(){const el=$('#pm');if(!el)return;el.innerHTML=Object.keys(P).filter(u=>u!=me).sort((a,b)=>(P[a].t||0)-(P[b].t||0)).map(u=>`<div>${nm(u)} <span class="m">${P[u].bot?'🤖 機器人 ':''}${P[u].left?'（已離開）':''}</span> <button class="b x" data-a="rm" data-u="${u}">移出</button></div>`).join('')||'<span class="m">（沒有其他玩家）</span>'}
-const ACT={pc3:i=>{i=+i;if(taken(i,me))return;closeOv();if(isHost)db.doc('players/'+me).set({...P[me],mode:PM,ch:i});else db.doc('join/'+me).set({mode:PM,ch:i,n:Date.now()})},heal1:()=>setP({heal:true}),heal0:()=>setP({heal:false}),poi0:()=>setP({p:null}),leave:()=>{if(!P[me])return toast('你還沒加入遊戲');if(!RLV){RLV=1;toast('再按一次「退出遊戲」確認');setTimeout(()=>{RLV=0},4000);return}RLV=0;if(isHost){if(!S||S.phase=='lobby'){db.doc('players/'+me).delete();toast('已退出座位')}else toast('遊戲進行中，主持人無法退出');return}LEFT=true;db.doc('join/'+me).set({leave:true,n:Date.now()});renderJoin()},
+let WST=null;
+function WSend(){const c=cur();WST={r:S.r,s:3};send({done:true,heal:!!c.heal,p:c.p||null})}
+function wDone(heal){const q=(mySec()||{}).q||{};PEND={...cur(),heal:heal,u:ME(),r:S.r};if(q.poison){WST={r:S.r,s:2};render()}else WSend()}
+const ACT={h1:()=>wDone(true),h0:()=>wDone(false),p1:()=>WSend(),p0:()=>{PEND={...cur(),p:null,u:ME(),r:S.r};WSend()},wredo:()=>{const q=(mySec()||{}).q||{};PEND={};WST={r:S.r,s:q.heal?1:2};render()},pc3:i=>{i=+i;if(taken(i,me))return;closeOv();if(isHost)db.doc('players/'+me).set({...P[me],mode:PM,ch:i});else db.doc('join/'+me).set({mode:PM,ch:i,n:Date.now()})},heal1:()=>setP({heal:true}),heal0:()=>setP({heal:false}),poi0:()=>setP({p:null}),leave:()=>{if(!P[me])return toast('你還沒加入遊戲');if(!RLV){RLV=1;toast('再按一次「退出遊戲」確認');setTimeout(()=>{RLV=0},4000);return}RLV=0;if(isHost){if(!S||S.phase=='lobby'){db.doc('players/'+me).delete();toast('已退出座位')}else toast('遊戲進行中，主持人無法退出');return}LEFT=true;db.doc('join/'+me).set({leave:true,n:Date.now()});renderJoin()},
  rejoin:()=>{LEFT=false;renderJoin()},
  rm:u=>{if(RM2!==u){RM2=u;toast('再按一次移出：'+((P[u]&&P[u].name)||'玩家'));setTimeout(()=>{if(RM2===u)RM2=null},4000);return}RM2=null;leavePlayer(u,'被主持人移出遊戲')},chg:()=>openPick('pc2'),chg0:()=>openPick('pc'),close:()=>closeOv(),help:t=>openHelp(t),pc:i=>{SELCH=+i;closeOv();updPcb()},pc2:i=>{if(!taken(+i,me)){setCh(+i);closeOv()}},seat:u=>{if(TGT&&TGT.list.includes(u)){if(TGT.a=='poi')setP({p:cur().p===u?null:u});else setP({t:u})}},t:u=>send({t:u}),n:()=>send({t:null}),
  heal:()=>setP({heal:!cur().heal}),cf:()=>{const sp=spec();if(!sp)return;const c=cur();if(sp.okA=='fin')send({...my(),done:true});else if(sp.okA=='wit')send({done:true,heal:!!c.heal,p:c.p||null});else send({t:c.t===undefined?null:c.t})},
@@ -313,7 +316,7 @@ function stage(sp){const lobby=!S||S.phase=='lobby',L=lobby?Object.keys(P).sort(
   const bt=lw[u]?['lwb',lw[u]]:tmb[u]?['tm',tmb[u]]:pb[u]?['',pb[u]]:null,pick=TGT&&TGT.list.includes(u),fc=dead?((S.fac&&S.fac[u])||'n'):(k?F(k):'n');
   return `<div class="seat ${dead?'dead':''} ${pick?'pick':''} ${TGT&&TGT.sel===u?'sel':''} ${!lobby&&S.phase=='last'&&(S.speakers||[]).includes(u)?'spk':''} ${u==U?'me':''} ${bt||(VT&&VT[u]!==undefined)?'hb':''}" style="left:${x}%;top:${y}%" data-a="seat" data-u="${u}">${bt?`<div class="bub ${bt[0]}">${esc(bt[1].slice(0,100))}</div>`:''}${VT&&VT[u]!==undefined?`<div class="vbub">${VT[u]?idx[VT[u]]:'棄'}</div>`:''}<div class="nm">${nm(u)}</div><div class="av">${avatar(u,dead,!lobby&&S.phase=='end'&&RVL&&S.reveal?S.reveal[u]:null)}</div><div><span class="no ${fcl(fc)}">${i+1}</span></div>${k?`<div class="rl ${fcl(F(k))}">${ri(k)}${R[k][0]}</div>`:''}</div>`}).join('');
  const al2=lobby?n:ids().filter(al).length,lab=lobby?'等待開始':{night:'夜晚',vote:'白天・投票',last:'最後一句話',shoot:'開槍',end:'結束'}[S.phase];
- return `<div class="stage ${night?'night':''} ${n>12?'sm':''}"><div class="tb">${lobby?'':'存活 '+al2+' / '+n+tl()}${lobby?n+' 人入座':''}</div>${lobby?'':trh()}<div class="cen">${ctr(sp)}${lastInfo()}</div>${seats}</div>`}
+ return `<div class="stage ${night?'night':''} ${n>12?'sm':''}"><div class="tb">${lobby?'':'存活 '+al2+' / '+n+tl()}${lobby?n+' 人入座':''}</div>${lobby?'':trh()}<div class="cen">${ctr(sp)}${NPL?'':lastInfo()}</div>${seats}</div>`}
 const F=r=>(r=='dk'||r=='gn')?'b':['as','wm','kn'].includes(r)?'g':'n';
 const BF=r=>r=='dk'?'b':['as','wm','kn'].includes(r)?'g':'n';
 const fcl=f=>f=='b'?'rd':f;
@@ -332,14 +335,18 @@ function spec(){const U=ME(),sc=mySec();if(!S||S.phase=='lobby'||!sc||!ids().inc
   if(r=='as')return{p:'點選占卜對象',a:'t',list:alive.filter(u=>u!=U),skip:'不占卜'};
   if(r=='kn')return{p:'點選守護對象'+(q&&q.no?`（不可連續守 ${nm(q.no)}）`:''),a:'t',list:alive.filter(u=>u!=(q&&q.no)),skip:'不守護'};
   if(r=='wm'){if(!q)return{p:'等待怪盜行動…'};if(!q.heal&&!q.poison)return{p:'兩種能力都已用完'};
-   return{p:'咖啡師：今晚要使用藥水嗎？（不會告訴你誰被下藥）',a:q.poison?'poi':null,list:alive.filter(u=>u!=U),hu:q.heal,pu:q.poison,ok:'確認',okA:'wit'}}
+   const st=(WST&&WST.r===S.r)?WST.s:(A(U)&&A(U).done?3:(q.heal?1:2));
+   if(st==3)return{p:'✔ 咖啡師已完成今晚的選擇',wk:3};
+   if(st==1)return{p:'回神茶：今晚要使用嗎？（只能用一次，不會告訴你有沒有人被下藥）',wk:1};
+   return{p:'濃縮特調：點選要請他離席的人，或按「不使用」（只能用一次）',a:'poi',list:alive.filter(u=>u!=U),wk:2}}
   return{p:'🌙 夜晚，請閉上眼睛'}}
  return null}
 function ctr(sp){if(!sp)return '';const c=cur(),sub=A(ME());let h=`<div class="pr">${sp.p}</div>`;
- if(sp.hu)h+=`<div>☕ 回神茶 <button class="b ${c.heal?'on':''}" data-a="heal1">使用</button><button class="b ${c.heal?'':'on'}" data-a="heal0">不使用</button></div>`;
- if(sp.pu)h+=`<div>🍵 濃縮特調 <span class="m">點選要請他離席的人，或</span><button class="b ${c.p?'':'on'}" data-a="poi0">不使用</button></div>`;
+ if(sp.wk==1)h+=`<div><button class="b" data-a="h1">使用</button><button class="b" data-a="h0">不使用</button></div>`;
+ if(sp.wk==2)h+=`<div><button class="b p" data-a="p1" ${c.p?'':'disabled'}>確認使用</button><button class="b" data-a="p0">不使用</button></div>`;
+ if(sp.wk==3)h+=`<div><button class="b" data-a="wredo">重新選擇</button></div>`;
  if(sp.ok)h+=`<button class="b p" data-a="cf">${sub&&sub.done?'✔ 已確認（可修改）':sp.ok}</button>`;
- else if(sp.a)h+=`<button class="b p" data-a="cf" ${c.t===undefined?'disabled':''}>${sub&&sub.t===c.t&&sub.t!==undefined?'✔ 已確認':'確認'}</button>`;
+ else if(sp.a&&!sp.wk)h+=`<button class="b p" data-a="cf" ${c.t===undefined?'disabled':''}>${sub&&sub.t===c.t&&sub.t!==undefined?'✔ 已確認':'確認'}</button>`;
  if(sp.skip)h+=`<button class="b" data-a="n">${sp.skip}</button>`;return h}
 let NK=null,SL=0,NT=0,RC=0;function toast(t){const el=$('#nar');NT++;el.style.display='flex';el.textContent=t;setTimeout(()=>{if(el.textContent==t)el.style.display='none'},3000)}
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));

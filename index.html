@@ -335,6 +335,13 @@ body{background:#2a1c14 radial-gradient(ellipse at top,#3b281c,#1f140e)}h1{color
 .pedi{background-image:none!important}.ped{background:radial-gradient(ellipse at center,rgba(255,240,205,.6),rgba(255,240,205,.22) 58%,transparent 72%)!important;border:2px solid rgba(201,162,74,.7);border-radius:50%}
 .nar{border:3px solid #c9a24a!important;border-image:none!important;border-radius:14px;background:rgba(36,24,18,.94)!important;color:#f6e7c8;padding:0 18px!important;box-sizing:border-box;width:50%;height:100px}
 `;document.head.appendChild(st)})();
+
+(()=>{const st=document.createElement('style');st.textContent=`
+.stage:before{content:"";position:absolute;inset:0;background:rgba(30,18,8,.14);pointer-events:none;z-index:0}.stage.night:before{background:rgba(0,0,0,.04)}
+.seat .nm{font-size:14px;max-width:124px}.seat .no{font-size:15px}.seat .rl{font-size:13px;width:126px}
+.pr{font-size:16px;background:rgba(30,18,10,.85);color:#fff6e0}.tb{font-size:16px;background:rgba(30,18,10,.85)}
+#msgs,#tmsgs,#gmsgs,.log{font-size:15px}.m{font-size:15px}
+`;document.head.appendChild(st)})();
 function stage(sp){const lobby=!S||S.phase=='lobby',L=lobby?Object.keys(P).sort((a,b)=>P[a].t-P[b].t).filter(u=>P[u].mode!='watch'):ids(),n=L.length||1,night=!lobby&&VNIGHT,sc=mySec(),U=ME();
  const lw={},now=Date.now(),pb={},tmb={},idx={};L.forEach((x,i)=>idx[x]=i+1);CH.msgs.forEach(m=>{if(m.lw){if(S&&S.phase!='end'&&S.phase!='lobby')lw[m.u]=((lw[m.u]||'')+' '+m.text).trim();return}if(!m.t||now-m.t>=8000)return;pb[m.u]=m.text});if(sc&&sc.tc)sc.tc.forEach(m=>{if(m.t&&now-m.t<8000)tmb[m.u]=m.text});const VT=!lobby&&S.phase=='vote'?(S.votes||{}):(!lobby&&LVK&&LVK===S.lvT&&S.lastVotes&&((LVKN&&!VNIGHT&&S.phase!='vote')||(!LVKN&&NPL))?Object.fromEntries(S.lastVotes):null);
  const known=u=>{if(lobby)return null;if(S.rv&&S.rv[u]&&!al(u))return S.rv[u];if(S.phase=='end'&&RVL&&S.reveal)return S.reveal[u];if(GOD&&H.roles)return H.roles[u];if(!sc||!ids().includes(U))return null;if(u==U)return sc.role;return sc.mates&&sc.mates.includes(u)?'dk':null};

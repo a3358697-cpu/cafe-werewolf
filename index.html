@@ -116,14 +116,14 @@ function cannot(u,ch,role){ // 回傳空字串=可發言，否則為原因
  if(!S||S.phase=='lobby'||S.phase=='end')return ch=='team'?'無同隊頻道':'';
  if(!ids().includes(u))return '觀戰者無法發言';
  if(!al(u)&&!(S.phase=='last'&&(S.speakers||[]).includes(u)))return '你已離席';
- if(ch=='team')return role=='dk'?'':'無同隊頻道';
+ if(ch=='team')return (role=='dk'||role=='as')?'':'無同隊頻道';
  if(S.phase=='night')return '🌙 夜晚禁止發言';
  if(S.phase=='shoot')return '等待外送刺客';return ''}
 
 function syncSec(){
  ids().forEach(u=>{const r=H.roles[u];let q=null;
   if(S.phase=='night'&&al(u)){if(r=='wm')q={cups:H.cups};if(r=='kn')q={no:H.lastGuard||null};if(r=='gn')q={used:!!H.gnUsed}}
-  const d={role:r,mates:r=='dk'?ids().filter(x=>H.roles[x]=='dk'&&x!=u):[],info:(H.info&&H.info[u])||[],tc:r=='dk'?(H.tc||[]):[],wv:r=='dk'?(H.wv||{}):{},gv:r=='wm'?(H.given||[]):[],inv:r=='as'?((H.invs&&H.invs[u])||{}):{},x:(H.pk||[]).includes(u)?1:0,q};
+  const d={role:r,mates:(r=='dk'||r=='as')?ids().filter(x=>H.roles[x]==r&&x!=u):[],info:(H.info&&H.info[u])||[],tc:(r=='dk'||r=='as')?((H.tcm&&H.tcm[r])||[]):[],wv:r=='dk'?(H.wv||{}):{},gv:r=='wm'?(H.given||[]):[],inv:r=='as'?((H.invs&&H.invs[u])||{}):{},x:(H.pk||[]).includes(u)?1:0,q};
   const s=JSON.stringify(d);if(CS[u]!==s){CS[u]=s;db.doc('sec/'+u).set(d)}})}
 function put(){db.doc('g/state').set(S);db.doc('host/secret').set(cl(H));syncSec()}
 function post(u,text,lw){CH.msgs.push({u,text,lw:!!lw,t:Date.now()});CH.msgs=CH.msgs.slice(-150);db.doc('g/chat').set(CH)}
@@ -143,13 +143,13 @@ function tick(F){if(!isHost||!S||!H.roles)return;if(!F&&S.hold&&Date.now()<S.hol
  if(S.phase=='end'&&S.again){checkAgain();if(S.phase!='end')return}
  if(!F&&(S.phase=='night'||S.phase=='vote'||S.phase=='shoot')){if(S.tdlR!==S.r){S.tdlR=S.r;S.tdl=Date.now()+(S.phase=='night'?90000:S.phase=='vote'?300000:40000);db.doc('g/state').set(S)}else if(Date.now()>S.tdl)F=true}const I=ids(),av=I.filter(al),g=r=>av.filter(u=>H.roles[u]==r);
  if(S.phase=='night'){const pk=H.pk||[],av2=av.filter(u=>!pk.includes(u)),g2=r=>av2.filter(u=>H.roles[u]==r);
-  const wv=g2('dk'),as=g2('as')[0],kn=g2('kn')[0],wm=g2('wm')[0],gn=g2('gn')[0];
+  const wv=g2('dk'),asl=g2('as'),kn=g2('kn')[0],wm=g2('wm')[0],gn=g2('gn')[0];
   const gdNow=()=>{let x=kn&&A(kn)?A(kn).t:null;if(x&&(x===H.lastGuard||x===kn))x=null;return x};
   {const wvm={};wv.forEach(u=>{if(A(u))wvm[u]=A(u).t||null});if(JSON.stringify(wvm)!=JSON.stringify(H.wv||{})){H.wv=wvm;syncSec()}}
   if(gn&&!H.gnUsed&&A(gn)&&A(gn).fire&&A(gn).t){H.gnUsed=true;H.gnBy=gn;const t=A(gn).t;if(gdNow()!==t&&al(t)&&!pk.includes(t))H.pk=[...pk,t];put();return}
   if(H.wt===undefined&&(F||wv.every(A))){const p=wv.map(u=>A(u)&&A(u).t).filter(Boolean);H.wt=rnd(p);put()}
   if(H.wt===undefined)return;
-  const need=[...wv,as,kn,(wm&&H.cups>0)?wm:null,(gn&&!H.gnUsed)?gn:null].filter(Boolean);
+  const need=[...wv,...asl,kn,(wm&&H.cups>0)?wm:null,(gn&&!H.gnUsed)?gn:null].filter(Boolean);
   if(!F&&!need.every(A))return;
   const gd=gdNow(),ca=wm&&A(wm)?A(wm):null,c=(ca&&ca.t&&H.cups>0)?ca.t:null,v=H.wt,dead=[...pk];let drank=false;const hs=(H.hist=H.hist||[]);pk.forEach(t=>hs.push({t:'n',n:S.n,v:t,how:'assassin',k:[H.gnBy],kr:R.gn[0]}));
   if(c){H.cups--;H.given=[...(H.given||[]),c];drank=gd!==c}
@@ -157,7 +157,7 @@ function tick(F){if(!isHost||!S||!H.roles)return;if(!F&&S.hold&&Date.now()<S.hol
   const saved=!!(drank&&v&&c===v&&!pk.includes(v)&&gd!==v);
   if(drank&&!saved&&H.lastCoffee===c&&!dead.includes(c)){dead.push(c);hs.push({t:'n',n:S.n,v:c,how:'caffeine',k:[wm],kr:R.wm[0]})}
   H.lastCoffee=(drank&&!saved)?c:null;
-  if(as&&A(as)&&A(as).t){const t=A(as).t;((H.invs=H.invs||{})[as]=H.invs[as]||{})[t]=H.roles[t];(H.info[as]=H.info[as]||[]).push(`第${S.n}夜：${nm(t)} 的職業是「${R[H.roles[t]][0]}」`)}
+  asl.forEach(as=>{if(A(as)&&A(as).t){const t=A(as).t;((H.invs=H.invs||{})[as]=H.invs[as]||{})[t]=H.roles[t];(H.info[as]=H.info[as]||[]).push(`第${S.n}夜：${nm(t)} 的職業是「${R[H.roles[t]][0]}」`)}});
   H.lastGuard=gd;delete H.wt;H.wv={};H.pk=[];dayStart(dead);
  }else if(S.phase=='vote'){
   const vm={};av.forEach(u=>{if(A(u))vm[u]=A(u).t||null});if(JSON.stringify(vm)!=JSON.stringify(S.votes||{})){S.votes=vm;db.doc('g/state').set(S)}
@@ -176,7 +176,7 @@ function tick(F){if(!isHost||!S||!H.roles)return;if(!F&&S.hold&&Date.now()<S.hol
   if(!F&&!A(S.speaker))return;const t=A(S.speaker)&&A(S.speaker).t;
   const nd=[...(H.nightDead||[])];let shot=null;if(t&&al(t)&&!nd.includes(t)){nd.push(t);shot=t}H.nightDead=null;dayStart(nd,shot);
  }else if(S.phase=='end'&&!S.fun){const m=I.find(u=>H.roles[u]=='mg'&&al(u));
-  if(m&&A(m)&&A(m).t){S.fun=1;S.log.push(`🧁 甜點師選擇請 ${nm(A(m).t)} 吃瑪芬蛋糕`);put()}}
+  if(m&&A(m)&&A(m).t){S.fun=1;S.mgp=A(m).t;S.ev={id:Date.now()+'',t:'🧁 甜點師請 '+sw(A(m).t)+' 吃瑪芬蛋糕'};S.log.push(`🧁 甜點師選擇請 ${nm(A(m).t)} 吃瑪芬蛋糕`);put()}}
 }
 function bots(){if(!isHost||!S||!H.roles||S.phase=='lobby'||S.phase=='end')return;const av=ids().filter(al);
  ids().filter(u=>P[u]&&P[u].bot&&u!==VA).forEach(u=>{if(A(u))return;const r=H.roles[u];let o=null;
@@ -210,10 +210,11 @@ function procJoin(){if(!isHost||!CFG)return;Object.entries(JOINS).forEach(([u,j]
 function procSay(){if(!isHost)return;Object.entries(SAYS).forEach(([u,m])=>{delete SAYS[u];db.doc('say/'+u).delete();
  if(m.end&&S&&S.phase=='last'&&(S.speakers||[]).includes(u)){if((S.lwd||[]).includes(u))return;const tx=String(m.text||'').trim().slice(0,100);if(tx)post(u,tx,true);S.lwd=[...(S.lwd||[]),u];if(S.speakers.every(x=>S.lwd.includes(x)))pump();else put();return}
  const text=String(m.text||'').trim().slice(0,120);if(!text||cannot(u,m.ch,H.roles&&H.roles[u]))return;
- if(m.ch=='ghost'){GH.msgs=[...GH.msgs,{u,text,t:Date.now()}].slice(-100);db.doc('g/ghost').set(GH)}else if(m.ch=='team'){H.tc=[...(H.tc||[]),{u,text,t:Date.now()}].slice(-60);put()}else post(u,text,!!(S&&S.phase=='last'&&(S.speakers||[]).includes(u)))})}
+ if(m.ch=='ghost'){GH.msgs=[...GH.msgs,{u,text,t:Date.now()}].slice(-100);db.doc('g/ghost').set(GH)}else if(m.ch=='team'){const rr=H.roles[u];H.tcm=H.tcm||{};H.tcm[rr]=[...(H.tcm[rr]||[]),{u,text,t:Date.now()}].slice(-60);put()}else post(u,text,!!(S&&S.phase=='last'&&(S.speakers||[]).includes(u)))})}
 
 let RLV=0,RM2=null,LEFT=false;
-function leavePlayer(u,why){if(!P[u])return;const lobby=!S||S.phase=='lobby';
+function leavePlayer(u,why){const evt=P[u]?'👋 '+sw(u)+(why&&why.includes('移出')?' 被主持人移出遊戲':' 離開了遊戲'):null;leavePlayer0(u,why);if(S&&evt){S.ev={id:Date.now()+'',t:evt};db.doc('g/state').set(S)}}
+function leavePlayer0(u,why){if(!P[u])return;const lobby=!S||S.phase=='lobby';
  if(lobby||!ids().includes(u)){db.doc('players/'+u).delete();delete P[u];return}
  if(S.alive[u]){kill(u,why||'離開了遊戲');put()}
  const np={...P[u],mode:'watch',left:true};P[u]=np;db.doc('players/'+u).set(np)}
@@ -221,7 +222,7 @@ function fillPm(){const el=$('#pm');if(!el)return;el.innerHTML=Object.keys(P).fi
 let WST=null;
 function WSend(){const c=cur();WST={r:S.r,s:3};send({done:true,heal:!!c.heal,p:c.p||null})}
 function wDone(heal){const q=(mySec()||{}).q||{};PEND={...cur(),heal:heal,u:ME(),r:S.r};if(q.poison){WST={r:S.r,s:2};render()}else WSend()}
-const ACT={rcm:()=>cfgEdit(c=>{c.dk=Math.max(0,(c.dk||0)-1)}),rcp:()=>cfgEdit(c=>{c.dk=Math.min(4,(c.dk||0)+1)}),rct:k=>cfgEdit(c=>{c[k]=c[k]?0:1}),rcdef:()=>{RCFG=null;saveRC();render()},h1:()=>wDone(true),h0:()=>wDone(false),p1:()=>WSend(),p0:()=>{PEND={...cur(),p:null,u:ME(),r:S.r};WSend()},wredo:()=>{const q=(mySec()||{}).q||{};send({cancel:true});PEND={};WST={r:S.r,s:q.heal?1:2};render()},pc3:i=>{i=+i;if(taken(i,me))return;closeOv();if(isHost)db.doc('players/'+me).set({...P[me],mode:PM,ch:i});else db.doc('join/'+me).set({mode:PM,ch:i,n:Date.now()})},heal1:()=>setP({heal:true}),heal0:()=>setP({heal:false}),poi0:()=>setP({p:null}),leave:()=>{if(!P[me])return toast('你還沒加入遊戲');if(!RLV){RLV=1;toast('再按一次「退出遊戲」確認');setTimeout(()=>{RLV=0},4000);return}RLV=0;if(isHost){if(!S||S.phase=='lobby'){db.doc('players/'+me).delete();toast('已退出座位')}else toast('遊戲進行中，主持人無法退出');return}LEFT=true;db.doc('join/'+me).set({leave:true,n:Date.now()});renderJoin()},
+const ACT={rcm:k=>cfgEdit(c=>{c[k]=Math.max(0,(c[k]||0)-1)}),rcp:k=>cfgEdit(c=>{c[k]=Math.min(k=='dk'?4:3,(c[k]||0)+1)}),rct:k=>cfgEdit(c=>{c[k]=c[k]?0:1}),rcdef:()=>{RCFG=null;saveRC();render()},h1:()=>wDone(true),h0:()=>wDone(false),p1:()=>WSend(),p0:()=>{PEND={...cur(),p:null,u:ME(),r:S.r};WSend()},wredo:()=>{const q=(mySec()||{}).q||{};send({cancel:true});PEND={};WST={r:S.r,s:q.heal?1:2};render()},pc3:i=>{i=+i;if(taken(i,me))return;closeOv();if(isHost)db.doc('players/'+me).set({...P[me],mode:PM,ch:i});else db.doc('join/'+me).set({mode:PM,ch:i,n:Date.now()})},heal1:()=>setP({heal:true}),heal0:()=>setP({heal:false}),poi0:()=>setP({p:null}),leave:()=>{if(!P[me])return toast('你還沒加入遊戲');if(!RLV){RLV=1;toast('再按一次「退出遊戲」確認');setTimeout(()=>{RLV=0},4000);return}RLV=0;if(isHost){if(!S||S.phase=='lobby'){db.doc('players/'+me).delete();toast('已退出座位')}else toast('遊戲進行中，主持人無法退出');return}LEFT=true;db.doc('join/'+me).set({leave:true,n:Date.now()});renderJoin()},
  rejoin:()=>{LEFT=false;renderJoin()},
  rm:u=>{if(RM2!==u){RM2=u;toast('再按一次移出：'+((P[u]&&P[u].name)||'玩家'));setTimeout(()=>{if(RM2===u)RM2=null},4000);return}RM2=null;leavePlayer(u,'被主持人移出遊戲')},chg:()=>openPick('pc2'),chg0:()=>openPick('pc'),close:()=>closeOv(),help:t=>openHelp(t),pc:i=>{SELCH=+i;closeOv();updPcb()},pc2:i=>{if(!taken(+i,me)){setCh(+i);closeOv()}},seat:u=>{if(TGT&&TGT.list.includes(u)){if(TGT.a=='poi')setP({p:cur().p===u?null:u});else setP({t:u})}},t:u=>send({t:u}),n:()=>{const sub=A(ME());if(sub&&sub.fire)return;if(sub&&sub.t===null&&!sub.done)send({cancel:true});else send({t:null})},
  heal:()=>setP({heal:!cur().heal}),cf:()=>{const sp=spec();if(!sp)return;const c=cur();if(sp.fire){const s0=A(ME());if(s0&&s0.fire)return;if(c.t===undefined)return;if(!RFI){RFI=1;toast('再按一次「出手」確認，出手後無法取消');setTimeout(()=>{RFI=0},4000);return}RFI=0;send({t:c.t,fire:true});return}if(sp.okA=='fin')send({...my(),done:true});else if(sp.okA=='wit')send({done:true,heal:!!c.heal,p:c.p||null});else{const sub=A(ME());if(sub&&sub.t===c.t&&c.t!==undefined){send({cancel:true});PEND={t:c.t,u:ME(),r:S.r};render();return}send({t:c.t===undefined?null:c.t})}},
@@ -262,7 +263,7 @@ function setCh(i){if(isHost)db.doc('players/'+me).set({...P[me],ch:i});else db.d
 .cg{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}.th{height:72px;border:2px solid transparent;border-radius:8px;background-color:rgba(255,255,255,.08);cursor:pointer}.th.sel{border-color:#ffd54a}.th.tk{opacity:.25;filter:grayscale(1);pointer-events:none}
 `;document.head.appendChild(st)})();
 const ri=k=>(k&&k!='ad'&&R[k])?`<span class="ri-e">${R[k][1]}</span>`:'';
-const HX={dk:'夜晚只有怪盜能下手；白天要想辦法隱藏身分。怪盜之間可在「同隊頻道」討論。',as:'調查結果會直接告訴你對方的職業，只有你看得到，要不要公開、怎麼說服大家，由你決定。',wm:'濃縮咖啡只擋得住怪盜的下手，擋不住外送刺客的暗殺。連續兩晚請同一個人（包含自己）喝，他就會咖啡因中毒離席。被夜班保全擋住時，這杯仍然算用掉，但對方不會喝到，所以不算連續。如果這杯咖啡真的救了人（對方當晚被怪盜下手），這次也不算進連續兩晚的次數。你給過的人，畫面上會有 ☕ 記號，只有你看得到。',gn:'屬於怪盜陣營，勝利條件和怪盜一樣，但你不認識怪盜、怪盜也不認識你，也看不到同隊頻道。整局只有一次暗殺機會，按下「出手」的瞬間目標就離席了，夜晚還會繼續進行；如果對方剛好被夜班保全守護，暗殺會失敗，但機會一樣用掉。夜班保全如果還沒按下確認，你的暗殺就一定成功，所以出手的時機很重要。右上角紅色徽章只算怪盜本人，不含你。',kn:'不能守護自己，也不能連續兩晚守同一個人。被守護的人不會被怪盜下手、不會被暗殺，也喝不到濃縮咖啡。注意：外送刺客出手的瞬間，只會檢查你「已經按下確認」的守護對象，所以要盡快確認，慢了就擋不住暗殺。10 人以上才會出現。',bm:'你的目標是被請出店外，不是存活，行為要「剛好」讓大家想請你出去。',mg:'遊戲結束時如果還活著，可選一位離席的人吃瑪芬蛋糕，不影響勝負。',fi:'遊戲結束時如果你還活著，不論哪邊贏，都是你獨自獲勝。',ad:'沒有技能，靠發言、推理與投票找出怪盜。'};
+const HX={dk:'夜晚只有怪盜能下手；白天要想辦法隱藏身分。怪盜之間可在「同隊頻道」討論。',as:'調查結果會直接告訴你對方的職業，只有你看得到，要不要公開、怎麼說服大家，由你決定。偵探最多可以有 3 位，彼此認識，可以使用同隊頻道，但各自調查、結果不共用。',wm:'濃縮咖啡只擋得住怪盜的下手，擋不住外送刺客的暗殺。連續兩晚請同一個人（包含自己）喝，他就會咖啡因中毒離席。被夜班保全擋住時，這杯仍然算用掉，但對方不會喝到，所以不算連續。如果這杯咖啡真的救了人（對方當晚被怪盜下手），這次也不算進連續兩晚的次數。你給過的人，畫面上會有 ☕ 記號，只有你看得到。',gn:'屬於怪盜陣營，勝利條件和怪盜一樣，但你不認識怪盜、怪盜也不認識你，也看不到同隊頻道。整局只有一次暗殺機會，按下「出手」的瞬間目標就離席了，夜晚還會繼續進行；如果對方剛好被夜班保全守護，暗殺會失敗，但機會一樣用掉。夜班保全如果還沒按下確認，你的暗殺就一定成功，所以出手的時機很重要。右上角紅色徽章只算怪盜本人，不含你。',kn:'不能守護自己，也不能連續兩晚守同一個人。被守護的人不會被怪盜下手、不會被暗殺，也喝不到濃縮咖啡。注意：外送刺客出手的瞬間，只會檢查你「已經按下確認」的守護對象，所以要盡快確認，慢了就擋不住暗殺。10 人以上才會出現。',bm:'你的目標是被請出店外，不是存活，行為要「剛好」讓大家想請你出去。',mg:'遊戲結束時如果還活著，可選一位離席的人吃瑪芬蛋糕，不影響勝負。',fi:'遊戲結束時如果你還活著，不論哪邊贏，都是你獨自獲勝。',ad:'沒有技能，靠發言、推理與投票找出怪盜。'};
 const RULES=`<h2>遊戲玩法</h2>
 <p><b>目標</b>：客人要找出並請走所有怪盜；怪盜要讓自己的人數不少於其他人。鬧事客人與悠哉常客有各自的單人勝利條件。</p>
 <p><b>流程</b>：打烊後的夜晚（各職業同時行動，限時 90 秒）→ 天亮公布離席的人 → 離席的人留下最後一句話 → 白天討論與投票請出店外（限時 5 分鐘）→ 再入夜，直到分出勝負。時間到時沒操作的人視為放棄。</p>
@@ -270,7 +271,7 @@ const RULES=`<h2>遊戲玩法</h2>
 <p><b>聊天</b>：公開頻道只有白天、還在座位上的人能說話；<b>夜晚禁止發言</b>。怪盜另有同隊頻道，夜晚也能討論；觀戰者與離席的人有專屬的「觀戰頻道」。</p>
 <p><b>投票</b>：每個人投下去，馬上會在他頭部右側用小泡泡顯示投給幾號（棄票顯示「棄」），得票最高、且票數超過存活人數一半的人，才會被請出店外；平票、全部棄票或票數不夠，就沒有人被請出店外。</p>
 <p><b>號碼牌顏色</b>：你只看得到自己與同夥的陣營色，其他人都是灰色。離席後會公開職業與陣營：<b style="color:#ff6b6b">紅＝怪盜</b>、<b style="color:#6f9bff">藍＝好人（有技能的客人）</b>、灰＝普通人／中立。右上角三個徽章是各陣營「還在座位上」的人數，紅色徽章只算怪盜本人，外送刺客算在灰色那一格。</p>
-<p><b>配置</b>：6–7 人：怪盜1、偵探、咖啡師、客人3；8–9 人：怪盜2、偵探、咖啡師、外送刺客、客人3；10 人以上再加夜班保全與客人。主持人可以在大廳或遊戲中自訂每一局出現的職業（遊戲中調整的內容，下一局才生效），沒有自訂時使用上面的預設配置。</p>`;
+<p><b>配置</b>：6–7 人：怪盜1、偵探、咖啡師、客人3；8–9 人：怪盜2、偵探、咖啡師、外送刺客、客人3；10 人以上再加夜班保全與客人。主持人可以在大廳或遊戲中自訂每一局出現的職業（怪盜最多 4 位、偵探最多 3 位）（遊戲中調整的內容，下一局才生效），沒有自訂時使用上面的預設配置。</p>`;
 const SH={dk:'夜晚選一個人下手',as:'夜晚調查一個人的職業',wm:'夜晚送濃縮咖啡（共 3 杯）',gn:'整局一次暗殺機會',kn:'夜晚守護一個人',bm:'被請出店外就獨自獲勝',mg:'活到最後請人吃瑪芬蛋糕',fi:'活到最後就獨自獲勝',ad:'靠推理找出怪盜'};
 function roleBlock(k){return `<div class="hr"><div style="width:64px;font-size:40px;text-align:center">${R[k][1]}</div><div><b>${R[k][0]}</b> <span class="rl ${fcl(F(k))}">${{b:'壞人',g:'好人',n:'普通人／中立'}[F(k)]}</span><div>${R[k][2]}</div><div class="m">${HX[k]}</div></div></div>`}
 function helpHtml(t){const sc=mySec(),mk=sc&&sc.role&&R[sc.role]?sc.role:null;
@@ -389,7 +390,7 @@ const EA={};function eang(i,n){if(!EA[n]){const N=720,ts=[],cum=[0];let px=0,py=
 .gv{position:absolute;left:calc(50% - 50px);top:34px;z-index:7;font-size:18px;line-height:1.3;background:#fff4d6;border:2px solid #b5651d;border-radius:12px;padding:0 6px;color:#5a3a1c;box-shadow:0 2px 6px rgba(0,0,0,.45)}
 `;document.head.appendChild(st)})();
 let WRN=null,WT=0;
-function warn(t){const el=$('#warn');el.textContent=t;el.style.display='block';clearTimeout(WT);WT=setTimeout(()=>{el.style.display='none'},5000)}
+function warn(t){const el=$('#warn');el.innerHTML=t;el.style.display='block';clearTimeout(WT);WT=setTimeout(()=>{el.style.display='none'},5000)}
 function dayWarn(){if(!S||S.phase!='vote'||!S.tdl||S.tdlR!==S.r||NPL)return;const l=Math.ceil((S.tdl-Date.now())/1000);if(!WRN||WRN.r!==S.r)WRN={r:S.r,a:0,b:0};if(l<=60&&l>30&&!WRN.a){WRN.a=1;warn('⏰ 白天討論剩下 1 分鐘')}if(l<=30&&l>0&&!WRN.b){WRN.b=1;WRN.a=1;warn('⏰ 白天討論剩下 30 秒')}}
 
 (()=>{const st=document.createElement('style');st.textContent=`
@@ -418,16 +419,30 @@ function hl(e){const v=sw(e.v),k=(e.k||[]).filter(Boolean).map(sw).join('、');
 function saveRC(){CFG.rc=RCFG;db.doc('host/cfg').set(CFG)}
 function cfgEdit(f){const n=Math.max(playersIn().length,6),c=RCFG?{...RCFG}:{...baseCfg(n)};f(c);RCFG=c;saveRC();render()}
 function roleCfgHtml(){const n=Math.max(playersIn().length,6),c=RCFG||baseCfg(n),b=board(n),tot=['dk','as','wm','gn','kn','bm','mg','fi'].reduce((a,k)=>a+(c[k]||0),0);
- const one=['as','wm','gn','kn','bm','mg','fi'].map(k=>`<button class="b ${c[k]?'on':''}" data-a="rct" data-u="${k}">${R[k][0]}</button>`).join('');
- return `<div class="c"><h2>職業配置${S&&S.phase&&S.phase!='lobby'?'（調整後，下一局才生效）':''}</h2><div>${R.dk[0]}：<button class="b" data-a="rcm">－</button> <b>${c.dk||0}</b> <button class="b" data-a="rcp">＋</button></div><div>${one}</div><p class="m">${RCFG?'自訂配置':'預設配置'}｜以 ${n} 人計：${b.map(k=>R[k][0]).join('、')}${tot>n?'　⚠️ 職業數超過人數':''}${c.dk?'':'　⚠️ 沒有怪盜'}</p><button class="b" data-a="rcdef">默認</button></div>`}
+ const step=k=>`<div>${R[k][0]}：<button class="b" data-a="rcm" data-u="${k}">－</button> <b>${c[k]||0}</b> <button class="b" data-a="rcp" data-u="${k}">＋</button></div>`;
+ const one=['wm','gn','kn','bm','mg','fi'].map(k=>`<button class="b ${c[k]?'on':''}" data-a="rct" data-u="${k}">${R[k][0]}</button>`).join('');
+ return `<div class="c"><h2>職業配置${S&&S.phase&&S.phase!='lobby'?'（調整後，下一局才生效）':''}</h2>${step('dk')}${step('as')}<div>${one}</div><p class="m">${RCFG?'自訂配置':'預設配置'}｜以 ${n} 人計：${b.map(k=>R[k][0]).join('、')}${tot>n?'　⚠️ 職業數超過人數':''}${c.dk?'':'　⚠️ 沒有怪盜'}</p><button class="b" data-a="rcdef">默認</button></div>`}
+let EVK=null,INFN=null;
+function noticeCheck(){if(!SL)return;const sc=mySec();
+ if(S&&S.ev){if(EVK===null)EVK=S.ev.id;else if(S.ev.id!==EVK){EVK=S.ev.id;warn(S.ev.t)}}else if(EVK===null)EVK='-';
+ const inf=(sc&&sc.info)?sc.info:[];if(INFN===null||inf.length<INFN)INFN=inf.length;else if(inf.length>INFN){INFN=inf.length;warn('🔍 '+inf[inf.length-1])}}
+function ctxt(e){const k=(e.k||[]).filter(Boolean).map(x=>'['+seatNo(x)+']').join('');
+ if(e.how=='vote')return '第'+e.n+'天 被票出（'+(e.by||[]).length+' 票）';if(e.how=='caffeine')return '第'+e.n+'夜 咖啡因中毒';
+ if(e.how=='assassin')return '第'+e.n+'夜 被'+k+'暗殺';return '第'+e.n+'夜 被'+k+'下藥'}
+(()=>{const st=document.createElement('style');st.textContent=`
+.zz{position:absolute;left:calc(50% + 22px);top:44px;font-size:22px;z-index:6;animation:zzb 1.6s ease-in-out infinite}@keyframes zzb{0%,100%{transform:translateY(0);opacity:.85}50%{transform:translateY(-8px);opacity:1}}
+.mf{position:absolute;left:calc(50% - 15px);top:18px;font-size:32px;z-index:8;animation:zzb 1s ease-in-out infinite}
+.ct{position:absolute;left:calc(50% + 36px);top:62px;max-width:120px;z-index:8;background:rgba(40,24,16,.92);color:#fff6e0;font-size:13px;line-height:1.3;border-radius:8px;padding:3px 7px;border:1px solid #c9a24a}
+`;document.head.appendChild(st)})();
 function stage(sp){const lobby=!S||S.phase=='lobby',L=lobby?Object.keys(P).sort((a,b)=>P[a].t-P[b].t).filter(u=>P[u].mode!='watch'):ids(),n=L.length||1,night=!lobby&&VNIGHT,sc=mySec(),U=ME();
  const lw={},now=Date.now(),pb={},tmb={},idx={};L.forEach((x,i)=>idx[x]=i+1);CH.msgs.forEach(m=>{if(m.lw){if(S&&S.phase!='end'&&S.phase!='lobby')lw[m.u]=((lw[m.u]||'')+' '+m.text).trim();return}if(!m.t||now-m.t>=8000)return;pb[m.u]=m.text});if(sc&&sc.tc)sc.tc.forEach(m=>{if(m.t&&now-m.t<8000)tmb[m.u]=m.text});const VT=!lobby&&S.phase=='vote'?(S.votes||{}):(!lobby&&LVK&&LVK===S.lvT&&S.lastVotes&&((LVKN&&!VNIGHT&&S.phase!='vote')||(!LVKN&&NPL))?Object.fromEntries(S.lastVotes):null);
  const NV=(!lobby&&S.phase=='night'&&sc&&sc.role=='dk'&&sc.wv&&ids().includes(U))?sc.wv:null;
  const GV={};if(!lobby&&sc&&sc.gv&&ids().includes(U))sc.gv.forEach(x=>{GV[x]=(GV[x]||0)+1});
- const known=u=>{if(lobby)return null;if(S.rv&&S.rv[u]&&!al(u))return S.rv[u];if(S.phase=='end'&&RVL&&S.reveal)return S.reveal[u];if(GOD&&H.roles)return H.roles[u];if(!sc||!ids().includes(U))return null;if(u==U)return sc.role;if(sc.inv&&sc.inv[u])return sc.inv[u];return sc.mates&&sc.mates.includes(u)?'dk':null};
+ const CT={};if(!lobby&&S.phase=='end'&&RVL&&S.hist)S.hist.forEach(e=>{CT[e.v]=ctxt(e)});
+ const known=u=>{if(lobby)return null;if(S.rv&&S.rv[u]&&!al(u))return S.rv[u];if(S.phase=='end'&&RVL&&S.reveal)return S.reveal[u];if(GOD&&H.roles)return H.roles[u];if(!sc||!ids().includes(U))return null;if(u==U)return sc.role;if(sc.inv&&sc.inv[u])return sc.inv[u];return sc.mates&&sc.mates.includes(u)?sc.role:null};
  const seats=L.map((u,i)=>{const a=eang(i,n),x=50+42*Math.cos(a),y=50+29*Math.sin(a),dead=!lobby&&!al(u),k=known(u);
   const bt=lw[u]?['lwb',lw[u]]:tmb[u]?['tm',tmb[u]]:pb[u]?['',pb[u]]:null,pick=TGT&&TGT.list.includes(u),fc=dead?((S.fac&&S.fac[u])||'n'):(k?F(k):'n');
-  return `<div class="seat ${dead?'dead':''} ${pick?'pick':''} ${TGT&&TGT.sel===u?'sel':''} ${!lobby&&S.phase=='last'&&(S.speakers||[]).includes(u)?'spk':''} ${u==U?'me':''} ${bt||(VT&&VT[u]!==undefined)||(NV&&NV[u]!==undefined)?'hb':''}" style="left:${x}%;top:${y}%" data-a="seat" data-u="${u}">${bt?`<div class="bub ${bt[0]}">${esc(bt[1].slice(0,100))}</div>`:''}${VT&&VT[u]!==undefined?`<div class="vbub">${VT[u]?idx[VT[u]]:'棄'}</div>`:''}${NV&&NV[u]!==undefined?`<div class="vbub nv">${NV[u]?idx[NV[u]]:'空'}</div>`:''}${GV[u]?`<div class="gv">☕${GV[u]>1?'×'+GV[u]:''}</div>`:''}${pick?`<div class="mk ${TGT&&TGT.sel===u?'sel':''}"></div>`:''}<div class="nm">${nm(u)}</div><div class="av">${avatar(u,dead,!lobby&&S.phase=='end'&&RVL&&S.reveal?S.reveal[u]:null)}</div><div><span class="no ${fcl(fc)}">${i+1}</span></div>${k?`<div class="rl ${fcl(F(k))}">${ri(k)}${R[k][0]}</div>`:''}</div>`}).join('');
+  return `<div class="seat ${dead?'dead':''} ${pick?'pick':''} ${TGT&&TGT.sel===u?'sel':''} ${!lobby&&S.phase=='last'&&(S.speakers||[]).includes(u)?'spk':''} ${u==U?'me':''} ${bt||(VT&&VT[u]!==undefined)||(NV&&NV[u]!==undefined)?'hb':''}" style="left:${x}%;top:${y}%" data-a="seat" data-u="${u}">${bt?`<div class="bub ${bt[0]}">${esc(bt[1].slice(0,100))}</div>`:''}${VT&&VT[u]!==undefined?`<div class="vbub">${VT[u]?idx[VT[u]]:'棄'}</div>`:''}${NV&&NV[u]!==undefined?`<div class="vbub nv">${NV[u]?idx[NV[u]]:'空'}</div>`:''}${GV[u]?`<div class="gv">☕${GV[u]>1?'×'+GV[u]:''}</div>`:''}${dead?'<div class="zz">💤</div>':''}${(S&&S.mgp===u&&S.phase=='end')?'<div class="mf">🧁</div>':''}${CT[u]?`<div class="ct">${CT[u]}</div>`:''}${pick?`<div class="mk ${TGT&&TGT.sel===u?'sel':''}"></div>`:''}<div class="nm">${nm(u)}</div><div class="av">${avatar(u,dead,!lobby&&S.phase=='end'&&RVL&&S.reveal?S.reveal[u]:null)}</div><div><span class="no ${fcl(fc)}">${i+1}</span></div>${k?`<div class="rl ${fcl(F(k))}">${ri(k)}${R[k][0]}</div>`:''}</div>`}).join('');
  const al2=lobby?n:ids().filter(al).length,lab=lobby?'等待開始':{night:'夜晚',vote:'白天・投票',last:'最後一句話',shoot:'開槍',end:'結束'}[S.phase];
  return `<div class="stage ${night?'night':''} ${n>12?'sm':''}"><div class="tb">${lobby?'':'存活 '+al2+' / '+n+tl()}${lobby?n+' 人入座':''}</div>${lobby?'':trh()}<div class="cen">${ctr(sp)}${NPL?'':lastInfo()}</div>${seats}</div>`}
 const F=r=>(r=='dk'||r=='gn')?'b':['as','wm','kn'].includes(r)?'g':'n';
@@ -492,7 +507,7 @@ function trh(){const d={b:0,g:0,n:0};Object.values(S.bf||{}).forEach(f=>d[f]++);
  return `<div class="tr"><span class="fb">${t.b-d.b}</span><span class="fb fg">${t.g-d.g}</span><span class="fb fn">${t.n-d.n}</span></div>`}
 let RQ=0;function render(){if(RQ)return;RQ=requestAnimationFrame(()=>{RQ=0;renderNow()})}
 function renderNow(){const U=ME(),sc=mySec(),lobby=!S||S.phase=='lobby',inG=!lobby&&ids().includes(U),mine=inG&&sc&&sc.role,meAl=inG&&al(U);
- narCheck();if(!S||S.phase!='end')RVL=false;else if(!NPL&&!NQ.length)RVL=true;if(!NPL&&!NQ.length)VNIGHT=!!S&&(S.phase=='night'||S.phase=='shoot');lwShow();TGT=null;const sp=NPL?null:spec();if(sp&&sp.a){const c=cur();TGT={a:sp.a,list:sp.list,sel:sp.a=='poi'?c.p:c.t}}
+ narCheck();noticeCheck();if(!S||S.phase!='end')RVL=false;else if(!NPL&&!NQ.length)RVL=true;if(!NPL&&!NQ.length)VNIGHT=!!S&&(S.phase=='night'||S.phase=='shoot');lwShow();TGT=null;const sp=NPL?null:spec();if(sp&&sp.a){const c=cur();TGT={a:sp.a,list:sp.list,sel:sp.a=='poi'?c.p:c.t}}
  $('#stagebox').innerHTML=stage(sp);
  $('#logb').innerHTML=lobby?'<span class="m">遊戲尚未開始</span>':[...S.log].reverse().map(l=>`<div>${l}</div>`).join('');
  let t='<h2>我的身分</h2>';
@@ -512,10 +527,10 @@ function seatNo(u){if(S&&S.phase!='lobby'){const i=ids().indexOf(u);return i<0?0
 const sn=u=>{const n=seatNo(u);return n?'['+n+'] ':''};
 function fill(el,ms,k){const stick=el.scrollTop+el.clientHeight>=el.scrollHeight-30,sig=k+ms.length+'|'+Object.keys(P).length+(S?S.phase+S.r:'');if(el.dataset.s==sig)return;el.dataset.s=sig;
  el.innerHTML=ms.map(x=>`<div class="${x.lw?'lw':''}"><b>${sn(x.u)}${nm(x.u)}</b>${x.lw?'（最後一句話）':''}：${esc(x.text)}</div>`).join('')||'<span class="m">還沒有訊息</span>';if(stick)el.scrollTop=el.scrollHeight}
-function renderChat(){const U=ME(),sc=mySec(),team=S&&S.phase!='lobby'&&S.phase!='end'&&ids().includes(U)&&sc&&sc.role=='dk';
+function renderChat(){const U=ME(),sc=mySec(),team=S&&S.phase!='lobby'&&S.phase!='end'&&ids().includes(U)&&sc&&(sc.role=='dk'||(sc.role=='as'&&sc.mates&&sc.mates.length));
  fill($('#msgs'),CH.msgs,'p');$('#tchat').style.display=team?'':'none';
  const w1=cannot(U,'pub',sc&&sc.role);$('#ci').disabled=$('#cs').disabled=!!w1;$('#ci').placeholder=w1||'輸入訊息，Enter 送出';
- if(team){fill($('#tmsgs'),sc.tc||[],'t');const w2=cannot(U,'team','dk');$('#ti').disabled=$('#ts').disabled=!!w2;$('#ti').placeholder=w2||'同隊訊息…'}
+ if(team){fill($('#tmsgs'),sc.tc||[],'t');const w2=cannot(U,'team',sc.role);$('#ti').disabled=$('#ts').disabled=!!w2;$('#ti').placeholder=w2||'同隊訊息…'}
  const gh=!!(S&&S.phase!='lobby'&&S.phase!='end'&&P[U]&&(!ids().includes(U)||!al(U)));$('#gchat').style.display=gh?'':'none';$('#tinfo').style.display=(gh&&!ids().includes(U))?'none':'';
  if(gh){fill($('#gmsgs'),GH.msgs,'g');const w3=cannot(U,'ghost',null);$('#gi').disabled=$('#gs').disabled=!!w3;$('#gi').placeholder=w3||'觀戰頻道（只有觀戰者與離席的人看得到）'}}
 function sendChat(ch){const ci=$(ch=='team'?'#ti':ch=='ghost'?'#gi':'#ci'),t=ci.value.trim();if(!t||ci.disabled||Date.now()-lastSend<400)return;lastSend=Date.now();ci.value='';db.doc('say/'+ME()).set({ch,text:t,n:Date.now()})}
